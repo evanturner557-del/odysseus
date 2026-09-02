@@ -637,6 +637,8 @@ from src.event_bus import set_task_scheduler
 set_task_scheduler(task_scheduler)
 from routes.task_routes import setup_task_routes
 app.include_router(setup_task_routes(task_scheduler))
+from routes.os_routes import setup_os_routes
+app.include_router(setup_os_routes())
 
 from routes.assistant_routes import setup_assistant_routes
 app.include_router(setup_assistant_routes(task_scheduler))
@@ -784,6 +786,10 @@ async def serve_gallery(request: Request):
 
 @app.get("/tasks")
 async def serve_tasks(request: Request):
+    return await serve_index(request)
+
+@app.get("/os")
+async def serve_os_dashboard(request: Request):
     return await serve_index(request)
 
 @app.get("/library")

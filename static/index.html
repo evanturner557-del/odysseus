@@ -5,6 +5,7 @@
   <title>Odysseus Chat</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 4L16 22L6 22Z' fill='%23e06c75'/%3E%3Cpath d='M16 8L16 22L24 22Z' fill='%23e06c75' opacity='0.6'/%3E%3Cpath d='M4 24Q10 20 16 24Q22 28 28 24' stroke='%23e06c75' stroke-width='2.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
   <link rel="manifest" href="/static/manifest.json">
+  <link rel="stylesheet" href="/static/os-dashboard.css">
   <meta name="theme-color" content="#282c34">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -133,6 +134,9 @@
         '/tasks':
           "<rect x='4' y='4' width='24' height='24' rx='3' fill='none' stroke='" + ac + "' stroke-width='2.5'/>" +
           "<path d='M9 16 L14 21 L23 11' fill='none' stroke='" + ac + "' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/>",
+        '/os':
+          "<circle cx='16' cy='16' r='10' fill='none' stroke='" + ac + "' stroke-width='2.5'/>" +
+          "<path d='M16 8 L16 16 L22 16' fill='none' stroke='" + ac + "' stroke-width='2.5' stroke-linecap='round'/>",
         '/library':
           "<rect x='5' y='5' width='5' height='22' rx='1' fill='none' stroke='" + ac + "' stroke-width='2.5'/>" +
           "<rect x='13' y='5' width='5' height='22' rx='1' fill='none' stroke='" + ac + "' stroke-width='2.5'/>" +
@@ -157,6 +161,7 @@
         '/memory': 'Memory — Odysseus',
         '/gallery': 'Gallery — Odysseus',
         '/tasks': 'Tasks — Odysseus',
+        '/os': 'Autonomous OS — Odysseus',
         '/library': 'Library — Odysseus',
       };
       if (titles[path]) document.title = titles[path];
@@ -671,6 +676,7 @@
     <button class="icon-rail-btn" id="rail-archive" title="Library"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M9 7h6M9 11h4"/></svg></button>
     <button class="icon-rail-btn" id="rail-memory" title="Brain"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/><path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4"/></svg></button>
     <button class="icon-rail-btn" id="rail-notes" title="Notes"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h10l4 4v14H5z"/><path d="M15 3v5h5"/><path d="M8 17.5 15.5 10l2.5 2.5L10.5 20H8z"/></svg></button>
+    <button class="icon-rail-btn" id="rail-os" title="Autonomous OS"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l4 2"/></svg></button>
     <button class="icon-rail-btn" id="rail-tasks" title="Tasks"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M9 16l2 2 4-4"/></svg></button>
     <button class="icon-rail-btn" id="rail-theme" title="Theme"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 0 0 20 5 5 0 0 0 5-5 3 3 0 0 0-3-3h-2a3 3 0 0 1-3-3 5 5 0 0 1 5-5"/></svg></button>
     <div style="flex:1"></div>
@@ -2325,5 +2331,33 @@
 <script type="module" src="/static/js/init.js"></script>
 <script type="module" src="/static/js/a11y.js"></script>
 <script nonce="{{CSP_NONCE}}">if('serviceWorker' in navigator){navigator.serviceWorker.register('/static/sw.js').catch(()=>{});}</script>
+
+  <div id="os-dashboard-panel" aria-hidden="true">
+    <div class="os-dash-header">
+      <h1>Autonomous OS</h1>
+      <span id="os-health-status">—</span>
+      <span id="os-health-level"></span>
+      <span id="os-health-cycles"></span>
+      <span id="os-health-pending"></span>
+      <span id="os-health-cost"></span>
+      <span style="flex:1"></span>
+      <button type="button" id="os-cycle-btn">Run cycle</button>
+      <button type="button" id="os-start-btn">START</button>
+      <button type="button" id="os-pause-btn">PAUSE</button>
+      <button type="button" id="os-stop-btn">GLOBAL STOP</button>
+      <button type="button" id="os-refresh-btn">Refresh</button>
+      <button type="button" id="os-close-btn">Close</button>
+    </div>
+    <p id="os-next-action" class="os-next"></p>
+    <div class="os-grid">
+      <section class="os-card"><h2>Agents / tasks</h2><ul id="os-agents"></ul></section>
+      <section class="os-card"><h2>Opportunities</h2><ul id="os-opportunities"></ul></section>
+      <section class="os-card"><h2>Experiments</h2><ul id="os-experiments"></ul></section>
+      <section class="os-card"><h2>Metrics (from events)</h2><ul id="os-metrics"></ul></section>
+      <section class="os-card os-span-2"><h2>HUMAN ATTENTION</h2><div id="os-attention"></div></section>
+      <section class="os-card os-span-2"><h2>Black box</h2><ul id="os-events"></ul></section>
+    </div>
+  </div>
+
 </body>
 </html>
