@@ -22,6 +22,7 @@ A self-hosted AI workspace -- meant to be the self-hosted version of the UI expe
   - **Memory / Skills** -- Persistent memory and skills, your agent evolves over time as it better understands you and your tasks!<br>　<sub>ChromaDB · fastembed (ONNX) · vector + keyword retrieval · import/export</sub>
   - **Email** -- IMAP/SMTP inbox with AI triage built in: urgency reminders, auto-tag, auto-summary, auto-reply drafts, auto-spam.<br>　<sub>IMAP · SMTP · per-account routing · CalDAV-aware</sub>
   - **Notes & Tasks** -- Quick notes with reminders, a todo list, and scheduled tasks the agent can act on.<br>　<sub>note pings · checklist · cron-style tasks · ntfy / browser / email channels</sub>
+  - **Autonomous OS (V1)** -- human-governed closed loop: discover opportunities, research with existing web search, score, hypothesise, request authority, execute only when policy allows (reversible, zero spend by default), measure, learn.<br>　<sub>governor · GLOBAL STOP · `/os` CEO dashboard · `python -m autonomy.run_cycle`</sub>
   - **Calendar** -- Local-first calendar with CalDAV sync to Radicale / Nextcloud / Apple / Fastmail.<br>　<sub>CalDAV pull · .ics import/export · per-calendar colors · agent-aware</sub>
   - **Works on mobile** -- looks and runs great on your phone, not just desktop.<br>　<sub>responsive · installable (PWA) · touch gestures</sub>
   - **Extras** -- more to explore, happy if you give it a go!<br>　<sub>image editor · theme editor · file uploads (vision + PDF) · web search · presets · sessions · 2FA</sub>
@@ -72,6 +73,21 @@ Open `http://localhost:7000` when the containers are healthy. Docker Compose
 binds the web UI to `127.0.0.1` by default. If the port is taken, set
 `APP_PORT=7001` in `.env` and recreate the container. Set `APP_BIND=0.0.0.0`
 only when you intentionally want LAN/reverse-proxy access.
+
+
+### Autonomous OS V1 (one cycle)
+
+```bash
+# Isolated dry run (mock search, no live spend)
+DATABASE_URL=sqlite:////tmp/odysseus-os-cycle.db \
+  python3 -m autonomy.run_cycle --owner local --use-mock-search
+
+# Inspect events / memory / metrics
+DATABASE_URL=sqlite:////tmp/odysseus-os-cycle.db \
+  python3 -m autonomy.run_cycle --owner local --dump
+```
+
+Dashboard (with Odysseus running): open `http://localhost:7000/os`. GLOBAL STOP on that page actually halts autonomous execution. Details: [docs/AUTONOMOUS_OS.md](docs/AUTONOMOUS_OS.md), [docs/GOVERNANCE.md](docs/GOVERNANCE.md).
 
 ### Native Linux / macOS
 ```bash
