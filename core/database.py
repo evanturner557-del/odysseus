@@ -2135,6 +2135,9 @@ def archive_session(session_id: str):
     return False
 
 # Initialize the database by creating all tables
-
+try:
+    import autonomy.models  # noqa: F401  # registers os_* tables on Base.metadata
+except Exception as _os_exc:
+    logging.getLogger(__name__).warning("autonomy models not loaded: %s", _os_exc)
 
 init_db()

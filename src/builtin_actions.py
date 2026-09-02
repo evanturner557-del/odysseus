@@ -2237,3 +2237,11 @@ BUILTIN_ACTION_INFO = {
     "audit_skills": "Audit unaudited skills after enough new skills are added: test, narrow metadata, self-edit/retry, optional teacher rewrite, tag duplicates/trivial skills, and publish/draft using the auto-approve threshold.",
     "check_email_urgency": "Scan unread emails hourly, tag urgent/reply-soon/newsletter/marketing/spam, and send a reminder when a new email needs a fast reply.",
 }
+
+
+try:
+    from autonomy.scheduler import OS_ACTION_INFO, OS_BUILTIN_ACTIONS
+    BUILTIN_ACTIONS.update(OS_BUILTIN_ACTIONS)
+    BUILTIN_ACTION_INFO.update(OS_ACTION_INFO)
+except Exception:
+    pass
