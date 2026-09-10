@@ -272,7 +272,7 @@ class OsBudget(TimestampMixin, Base):
     owner = Column(String, nullable=True, index=True)
     scope = Column(String, nullable=False)  # treasury|project|experiment|action
     scope_id = Column(String, nullable=True, index=True)
-    currency = Column(String, nullable=False, default="USD")
+    currency = Column(String, nullable=False, default="GBP")
     limit_cents = Column(Integer, nullable=False, default=0)
     spent_cents = Column(Integer, nullable=False, default=0)
     autonomous_limit_cents = Column(Integer, nullable=False, default=0)
@@ -291,7 +291,7 @@ class OsTransaction(Base):
     budget_id = Column(String, ForeignKey("os_budgets.id", ondelete="SET NULL"), nullable=True, index=True)
     action_id = Column(String, ForeignKey("os_actions.id", ondelete="SET NULL"), nullable=True)
     amount_cents = Column(Integer, nullable=False)
-    currency = Column(String, nullable=False, default="USD")
+    currency = Column(String, nullable=False, default="GBP")
     memo = Column(String, nullable=True)
     created_at = Column(DateTime, nullable=False, default=utcnow_naive)
 
@@ -489,6 +489,43 @@ class OsApprovalRequest(TimestampMixin, Base):
     decision = relationship("OsDecision", backref="approvals")
 
 
+
+
+class OsBusinessUnit(TimestampMixin, Base):
+    """Business Factory unit on the conveyor (for-profit or charity).
+
+    Financial fields are operator-tracked GBP figures — never live Stripe/bank
+    pulls. Unset balances stay at zero with honest API labels.
+    """
+
+    __tablename__ = "os_business_units"
+
+    id = Column(String, primary_key=True, default=_uid)
+    unit_id = Column(String, nullable=False, unique=True, index=True)  # UNIT-2026-000001
+    owner = Column(String, nullable=True, index=True)
+    opportunity_id = Column(String, ForeignKey("os_opportunities.id", ondelete="SET NULL"), nullable=True, index=True)
+    project_id = Column(String, ForeignKey("os_projects.id", ondelete="SET NULL"), nullable=True, index=True)
+    name = Column(String, nullable=False)
+    business_class = Column(String, nullable=False, default="for_profit")  # for_profit|charity
+    stage = Column(String, nullable=False, default="IDEA")
+    revenue_gbp = Column(Float, nullable=False, default=0.0)
+    cost_gbp = Column(Float, nullable=False, default=0.0)
+    mrr_gbp = Column(Float, nullable=False, default=0.0)  # charity: recurring donors GBP
+    customers = Column(Integer, nullable=False, default=0)  # charity: donor count
+    conversations = Column(Integer, nullable=False, default=0)
+    next_action = Column(Text, nullable=True)
+    kill_date = Column(DateTime, nullable=True)
+    bot_owner = Column(String, nullable=True)
+    notes = Column(Text, nullable=True)
+
+    __table_args__ = (
+        Index("ix_os_unit_owner_stage", "owner", "stage"),
+        Index("ix_os_unit_owner_class", "owner", "business_class"),
+    )
+
+    opportunity = relationship("OsOpportunity", backref="business_units")
+    project = relationship("OsProject", backref="business_units")
+
 def all_os_tables():
     """Return table objects so tests can create just OS tables if needed."""
     return [
@@ -517,4 +554,5 @@ def all_os_tables():
         OsAlert.__table__,
         OsAuditLog.__table__,
         OsApprovalRequest.__table__,
+        OsBusinessUnit.__table__,
     ]

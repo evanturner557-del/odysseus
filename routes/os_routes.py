@@ -43,6 +43,8 @@ from autonomy.runtime import (
 from autonomy.seed import seed_v1
 from autonomy.tools import REGISTRY
 from autonomy.treasury import update_budget
+from autonomy.factory import build_factory_dashboard, create_unit, list_units, unit_to_dict
+from autonomy.constants import FACTORY_CLASSES, FACTORY_STAGES
 
 
 def _owner(request: Request) -> str:
@@ -101,6 +103,16 @@ class PrioritiseIn(BaseModel):
     opportunity_id: Optional[str] = None
     experiment_id: Optional[str] = None
     priority: int
+
+
+class UnitIn(BaseModel):
+    name: str
+    business_class: str = "for_profit"
+    stage: str = "IDEA"
+    bot_owner: Optional[str] = "businessbuilder"
+    next_action: Optional[str] = None
+    opportunity_id: Optional[str] = None
+    project_id: Optional[str] = None
 
 
 class CycleIn(BaseModel):
@@ -642,7 +654,7 @@ def setup_os_routes() -> APIRouter:
                 spent += int(b.spent_cents or 0)
             return {
                 "health": health,
-                "costs": {"spent_cents": spent, "currency": "USD"},
+                "costs": {"spent_cents": spent, "currency": "GBP", "note": "Tracked internal spend only — not Stripe/bank"},
                 "agents": [{"name": a.name, "role": a.role, "status": a.status} for a in agents.all()],
                 "opportunities": [opp_to_dict(o) for o in opps.order_by(OsOpportunity.rank.asc().nullslast()).limit(20).all()],
                 "experiments": [_exp_dict(e) for e in exps.order_by(OsExperiment.created_at.desc()).limit(20).all()],
@@ -655,9 +667,61 @@ def setup_os_routes() -> APIRouter:
                 ],
                 "next_action": next_best_action(db, owner),
                 "tools": REGISTRY.list_specs(),
+                "factory": build_factory_dashboard(db, owner),
             }
         finally:
             db.close()
+
+    @router.get("/factory")
+    def get_factory(request: Request):
+        """Business Factory command desktop payload."""
+        owner = _owner(request)
+        db = session()
+        try:
+            seed_v1(db, owner)
+            db.commit()
+            return build_factory_dashboard(db, owner)
+        finally:
+            db.close()
+
+    @router.get("/factory/units")
+    def get_factory_units(request: Request):
+        owner = _owner(request)
+        db = session()
+        try:
+            seed_v1(db, owner)
+            db.commit()
+            return [unit_to_dict(u) for u in list_units(db, owner)]
+        finally:
+            db.close()
+
+    @router.post("/factory/units")
+    def post_factory_unit(body: UnitIn, request: Request):
+        owner = _owner(request)
+        db = session()
+        try:
+            seed_v1(db, owner)
+            if body.business_class not in FACTORY_CLASSES:
+                raise HTTPException(400, f"business_class must be one of {FACTORY_CLASSES}")
+            if body.stage not in FACTORY_STAGES:
+                raise HTTPException(400, f"stage must be one of {FACTORY_STAGES}")
+            row = create_unit(
+                db, owner,
+                name=body.name,
+                business_class=body.business_class,
+                stage=body.stage,
+                bot_owner=body.bot_owner,
+                next_action=body.next_action,
+                opportunity_id=body.opportunity_id,
+                project_id=body.project_id,
+            )
+            db.commit()
+            return unit_to_dict(row)
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+        finally:
+            db.close()
+
 
     return router
 
@@ -732,6 +796,7 @@ def _action_dict(a: OsAction) -> dict:
 def _budget_dict(b: OsBudget) -> dict:
     return {
         "id": b.id, "scope": b.scope, "scope_id": b.scope_id,
+        "currency": getattr(b, "currency", None) or "GBP",
         "limit_cents": b.limit_cents, "spent_cents": b.spent_cents,
         "autonomous_limit_cents": b.autonomous_limit_cents, "authorised": b.authorised,
         "remaining_cents": int(b.limit_cents or 0) - int(b.spent_cents or 0),

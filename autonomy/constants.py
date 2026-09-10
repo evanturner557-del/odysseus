@@ -186,6 +186,34 @@ SEED_MISSION_TITLE = "Learn, then propose reversible experiments"
 SEARCH_TOOL_COST_CENTS = 0
 SEARCH_TOOL_TIMEOUT_SECONDS = 20
 
+
+# Business Factory conveyor stages (exact order).
+FACTORY_STAGES = (
+    "IDEA",
+    "SCORED",
+    "VALIDATING",
+    "FIRST_SALE",
+    "KITTED",
+    "LIVE",
+    "AUTOMATING",
+    "AUTONOMOUS",
+)
+
+FACTORY_CLASSES = ("for_profit", "charity")
+
+# Factory bot roles — status surfaces on the command desktop.
+FACTORY_BOTS = (
+    "businessbuilder",
+    "Businessbot",
+    "Holdingbot",
+    "orchestratorbot",
+)
+
+# Approvals queue buckets for Factory Command.
+FACTORY_APPROVAL_CATEGORIES = ("spend", "external", "irreversible")
+
+CURRENCY_GBP = "GBP"
+
 OS_CYCLE_ACTIONS = (
     "os_health",
     "os_task_review",

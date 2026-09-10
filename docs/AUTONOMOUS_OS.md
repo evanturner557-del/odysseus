@@ -106,3 +106,18 @@ All under `/api/os/` and gated by existing Odysseus auth (`require_user`).
 ## Self-monitor
 
 Failures are classified: `TRANSIENT`, `PERMISSION`, `VALIDATION`, `DEPENDENCY`, `LOGIC`, `SECURITY`, `UNKNOWN`. Transient failures may retry up to a configured limit. **Security failures are never retried blindly** — they escalate to the attention queue.
+
+## Business Factory Command
+
+The `/os` CEO dashboard includes Factory Command panels backed by `/api/os/dashboard` → `factory` and `/api/os/factory`:
+
+| Panel | Source |
+| --- | --- |
+| Pipeline | `os_business_units` by stage (`IDEA` → `AUTONOMOUS`) + kill dates |
+| HoldCo P&L | Treasury capital pool + per-unit revenue/cost/MRR (charity: donors). £ / GBP. Stripe/bank shown as **0 — not linked** |
+| Bots | `businessbuilder`, `Businessbot`, `Holdingbot`, `orchestratorbot` (`os_agents`) |
+| Approvals queue | Pending approvals bucketed `spend` / `external` / `irreversible` |
+| Super-orchestrator feed | In-app `os_events` stream (no external Grok API) |
+
+Create a unit: `POST /api/os/factory/units` with `name`, optional `business_class` (`for_profit`\|`charity`), `stage`. Metrics start at honest zeros.
+

@@ -18,6 +18,7 @@ from autonomy.models import OsGoal, OsMission, OsOpportunity, OsPolicy, OsProjec
 from autonomy.opportunities import next_public_id
 from autonomy.runtime import get_or_create_runtime
 from autonomy.treasury import ensure_child_budget, ensure_treasury
+from autonomy.factory import ensure_factory_bots
 
 
 def seed_v1(db, owner: Optional[str]) -> dict:
@@ -141,6 +142,8 @@ def seed_v1(db, owner: Optional[str]) -> dict:
             name=SEED_EXPERIMENT_NAME, actor=ACTOR_HUMAN, authorised=False,
         )
 
+    factory_bots = ensure_factory_bots(db, owner)
+
     db.flush()
     return {
         "mission_id": mission.id,
@@ -152,4 +155,5 @@ def seed_v1(db, owner: Optional[str]) -> dict:
         "treasury_id": treasury.id,
         "project_budget_id": proj_budget.id,
         "runtime_id": rt.id,
+        "factory_bot_ids": [b.id for b in factory_bots],
     }
