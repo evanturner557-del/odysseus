@@ -43,7 +43,17 @@ from autonomy.runtime import (
 from autonomy.seed import seed_v1
 from autonomy.tools import REGISTRY
 from autonomy.treasury import update_budget
-from autonomy.factory import build_factory_dashboard, create_unit, list_units, unit_to_dict
+from autonomy.factory import (
+    build_factory_dashboard,
+    create_unit,
+    delete_unit,
+    find_unit_by_name,
+    get_unit_by_unit_id,
+    list_units,
+    parse_kill_date,
+    unit_to_dict,
+    update_unit,
+)
 from autonomy.constants import FACTORY_CLASSES, FACTORY_STAGES
 
 
@@ -113,6 +123,16 @@ class UnitIn(BaseModel):
     next_action: Optional[str] = None
     opportunity_id: Optional[str] = None
     project_id: Optional[str] = None
+    kill_date: Optional[str] = None  # ISO date or datetime; not P&L
+
+
+class UnitPatch(BaseModel):
+    """Businessbot-safe unit updates — no revenue/cost/mrr/customers."""
+    stage: Optional[str] = None
+    next_action: Optional[str] = None
+    kill_date: Optional[str] = None
+    bot_owner: Optional[str] = None
+    name: Optional[str] = None
 
 
 class CycleIn(BaseModel):
@@ -701,10 +721,18 @@ def setup_os_routes() -> APIRouter:
         db = session()
         try:
             seed_v1(db, owner)
+            existing = find_unit_by_name(db, owner, body.name)
+            if existing is not None:
+                db.commit()
+                return unit_to_dict(existing)
             if body.business_class not in FACTORY_CLASSES:
                 raise HTTPException(400, f"business_class must be one of {FACTORY_CLASSES}")
             if body.stage not in FACTORY_STAGES:
                 raise HTTPException(400, f"stage must be one of {FACTORY_STAGES}")
+            try:
+                kill = parse_kill_date(body.kill_date)
+            except ValueError as e:
+                raise HTTPException(400, str(e))
             row = create_unit(
                 db, owner,
                 name=body.name,
@@ -714,11 +742,55 @@ def setup_os_routes() -> APIRouter:
                 next_action=body.next_action,
                 opportunity_id=body.opportunity_id,
                 project_id=body.project_id,
+                kill_date=kill,
             )
             db.commit()
             return unit_to_dict(row)
         except ValueError as e:
             raise HTTPException(400, str(e))
+        finally:
+            db.close()
+
+    @router.patch("/factory/units/{unit_id}")
+    def patch_factory_unit(unit_id: str, body: UnitPatch, request: Request):
+        owner = _owner(request)
+        db = session()
+        try:
+            seed_v1(db, owner)
+            row = get_unit_by_unit_id(db, owner, unit_id)
+            if row is None:
+                raise HTTPException(404, "not found")
+            try:
+                set_kill = "kill_date" in body.model_fields_set
+                kill = parse_kill_date(body.kill_date) if set_kill else None
+                update_unit(
+                    db, row,
+                    stage=body.stage,
+                    next_action=body.next_action,
+                    kill_date=kill,
+                    set_kill_date=set_kill,
+                    bot_owner=body.bot_owner,
+                    name=body.name,
+                )
+            except ValueError as e:
+                raise HTTPException(400, str(e))
+            db.commit()
+            return unit_to_dict(row)
+        finally:
+            db.close()
+
+    @router.delete("/factory/units/{unit_id}")
+    def delete_factory_unit(unit_id: str, request: Request):
+        owner = _owner(request)
+        db = session()
+        try:
+            seed_v1(db, owner)
+            row = get_unit_by_unit_id(db, owner, unit_id)
+            if row is None:
+                raise HTTPException(404, "not found")
+            delete_unit(db, row)
+            db.commit()
+            return {"ok": True, "unit_id": unit_id}
         finally:
             db.close()
 

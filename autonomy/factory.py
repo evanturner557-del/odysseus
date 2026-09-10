@@ -145,6 +145,78 @@ def create_unit(
     return row
 
 
+def parse_kill_date(value: Optional[str]) -> Optional[datetime]:
+    """Parse ISO date or datetime string to naive UTC datetime. Empty/None -> None."""
+    if value is None:
+        return None
+    s = str(value).strip()
+    if not s:
+        return None
+    s = s.replace("Z", "+00:00")
+    try:
+        dt = datetime.fromisoformat(s)
+    except ValueError:
+        try:
+            dt = datetime.fromisoformat(s + "T00:00:00")
+        except ValueError as e:
+            raise ValueError(f"invalid kill_date: {value!r}") from e
+    if dt.tzinfo is not None:
+        dt = dt.replace(tzinfo=None)
+    return dt
+
+
+def find_unit_by_name(db, owner: Optional[str], name: str) -> Optional[OsBusinessUnit]:
+    """Return an existing unit with the same owner+name, if any."""
+    q = db.query(OsBusinessUnit).filter(OsBusinessUnit.name == name)
+    if owner:
+        q = q.filter(OsBusinessUnit.owner == owner)
+    else:
+        q = q.filter(OsBusinessUnit.owner.is_(None))
+    return q.first()
+
+
+def get_unit_by_unit_id(db, owner: Optional[str], unit_id: str) -> Optional[OsBusinessUnit]:
+    q = db.query(OsBusinessUnit).filter(OsBusinessUnit.unit_id == unit_id)
+    if owner:
+        q = q.filter(OsBusinessUnit.owner == owner)
+    return q.first()
+
+
+def update_unit(
+    db,
+    row: OsBusinessUnit,
+    *,
+    stage: Optional[str] = None,
+    next_action: Optional[str] = None,
+    kill_date: Optional[datetime] = None,
+    set_kill_date: bool = False,
+    bot_owner: Optional[str] = None,
+    name: Optional[str] = None,
+) -> OsBusinessUnit:
+    """Patch non-P&L fields. Revenue/cost/mrr/customers stay server-owned."""
+    if stage is not None:
+        if stage not in FACTORY_STAGES:
+            raise ValueError(f"stage must be one of {FACTORY_STAGES}")
+        row.stage = stage
+    if next_action is not None:
+        row.next_action = next_action
+    if set_kill_date:
+        row.kill_date = kill_date
+    if bot_owner is not None:
+        row.bot_owner = bot_owner
+    if name is not None:
+        if not str(name).strip():
+            raise ValueError("name must be non-empty")
+        row.name = name
+    db.flush()
+    return row
+
+
+def delete_unit(db, row: OsBusinessUnit) -> None:
+    db.delete(row)
+    db.flush()
+
+
 def pipeline_payload(units: List[OsBusinessUnit]) -> Dict[str, Any]:
     by_stage: Dict[str, List[Dict[str, Any]]] = {s: [] for s in FACTORY_STAGES}
     kill_dates: List[Dict[str, Any]] = []

@@ -186,3 +186,98 @@ def test_metrics_contract_keys(monkeypatch):
         "bot_owner", "updated_at",
     }
     assert required.issubset(unit.keys())
+
+
+def test_factory_create_kill_date_and_patch_stage(monkeypatch):
+    client, *_ = _client(monkeypatch)
+    created = client.post("/api/os/factory/units", json={
+        "name": "Validate Co",
+        "stage": "VALIDATING",
+        "kill_date": "2026-10-01",
+        "next_action": "get first sale or kill",
+        "bot_owner": "Businessbot",
+    })
+    assert created.status_code == 200
+    unit = created.json()
+    assert unit["stage"] == "VALIDATING"
+    assert unit["kill_date"].startswith("2026-10-01")
+    assert unit["revenue_gbp"] == 0.0
+    assert unit["cost_gbp"] == 0.0
+    uid = unit["unit_id"]
+
+    patched = client.patch(f"/api/os/factory/units/{uid}", json={
+        "stage": "FIRST_SALE",
+        "next_action": "kit and go live",
+    })
+    assert patched.status_code == 200
+    body = patched.json()
+    assert body["stage"] == "FIRST_SALE"
+    assert body["next_action"] == "kit and go live"
+    assert body["kill_date"].startswith("2026-10-01")
+    assert body["revenue_gbp"] == 0.0
+    assert body["mrr_gbp"] == 0.0
+    assert body["customers"] == 0
+
+    bad_stage = client.patch(f"/api/os/factory/units/{uid}", json={"stage": "NOT_A_STAGE"})
+    assert bad_stage.status_code == 400
+
+    # P&L fields in body are ignored by schema (extra forbidden default) or simply not applied
+    money = client.patch(f"/api/os/factory/units/{uid}", json={
+        "stage": "KITTED",
+        "revenue_gbp": 999.0,
+        "cost_gbp": 50.0,
+        "mrr_gbp": 100.0,
+        "customers": 12,
+    })
+    # Either 422 (extra forbidden) or 200 with zeros unchanged
+    if money.status_code == 200:
+        assert money.json()["revenue_gbp"] == 0.0
+        assert money.json()["cost_gbp"] == 0.0
+        assert money.json()["customers"] == 0
+    else:
+        assert money.status_code == 422
+
+
+def test_factory_create_dedupe_and_delete(monkeypatch):
+    client, *_ = _client(monkeypatch)
+    a = client.post("/api/os/factory/units", json={
+        "name": "Canonical Unit",
+        "stage": "IDEA",
+        "kill_date": "2026-12-15T12:00:00",
+    })
+    assert a.status_code == 200
+    first = a.json()
+    assert first["unit_id"].startswith("UNIT-")
+
+    dup = client.post("/api/os/factory/units", json={
+        "name": "Canonical Unit",
+        "stage": "SCORED",
+        "next_action": "should not create",
+    })
+    assert dup.status_code == 200
+    second = dup.json()
+    assert second["unit_id"] == first["unit_id"]
+    assert second["stage"] == "IDEA"  # existing unchanged
+    assert second["kill_date"] is not None
+
+    units = client.get("/api/os/factory/units").json()
+    assert len([u for u in units if u["name"] == "Canonical Unit"]) == 1
+
+    missing = client.delete("/api/os/factory/units/UNIT-2099-999999")
+    assert missing.status_code == 404
+
+    deleted = client.delete(f"/api/os/factory/units/{first['unit_id']}")
+    assert deleted.status_code == 200
+    assert deleted.json()["ok"] is True
+
+    units_after = client.get("/api/os/factory/units").json()
+    assert all(u["unit_id"] != first["unit_id"] for u in units_after)
+
+    # Name can be reused after delete (unit_id may recycle via count+1 scheme)
+    again = client.post("/api/os/factory/units", json={"name": "Canonical Unit", "stage": "IDEA"})
+    assert again.status_code == 200
+    assert again.json()["name"] == "Canonical Unit"
+    assert again.json()["unit_id"].startswith("UNIT-")
+    units_reused = client.get("/api/os/factory/units").json()
+    assert len([u for u in units_reused if u["name"] == "Canonical Unit"]) == 1
+
